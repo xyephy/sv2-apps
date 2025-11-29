@@ -134,6 +134,64 @@ pub async fn start_pool(
     (pool, listening_address)
 }
 
+/// Start a Pool that connects directly to Bitcoin Core via IPC.
+///
+/// This bypasses sv2-tp and uses `TemplateProviderType::BitcoinCoreIpc` for direct
+/// communication with Bitcoin Core's mining interface.
+pub async fn start_pool_ipc(
+    ipc_socket_path: std::path::PathBuf,
+    supported_extensions: Vec<u16>,
+    required_extensions: Vec<u16>,
+) -> (PoolSv2, SocketAddr) {
+    use pool_sv2::config::PoolConfig;
+    let listening_address = get_available_address();
+    let authority_public_key = Secp256k1PublicKey::try_from(
+        "9auqWEzQDVyd2oe1JVGFLMLHZtCo2FFqZwtKA5gd9xbuEu7PH72".to_string(),
+    )
+    .expect("failed");
+    let authority_secret_key = Secp256k1SecretKey::try_from(
+        "mkDLTBBRxdBv998612qipDYoTK3YUrqLe8uWw7gu3iXbSrn2n".to_string(),
+    )
+    .expect("failed");
+    let cert_validity_sec = 3600;
+    let coinbase_reward_script = CoinbaseRewardScript::from_descriptor(
+        "wpkh(036adc3bdf21e6f9a0f0fb0066bf517e5b7909ed1563d6958a10993849a7554075)",
+    )
+    .unwrap();
+    let pool_signature = "Stratum V2 SRI Pool".to_string();
+    let connection_config = pool_sv2::config::ConnectionConfig::new(
+        listening_address,
+        cert_validity_sec,
+        pool_signature,
+    );
+    let template_provider_config = TemplateProviderType::BitcoinCoreIpc {
+        unix_socket_path: ipc_socket_path,
+        fee_threshold: 0,
+        min_interval: 1,
+    };
+    let authority_config =
+        pool_sv2::config::AuthorityConfig::new(authority_public_key, authority_secret_key);
+    let share_batch_size = 1;
+    let config = PoolConfig::new(
+        connection_config,
+        template_provider_config,
+        authority_config,
+        coinbase_reward_script,
+        SHARES_PER_MINUTE,
+        share_batch_size,
+        1,
+        supported_extensions,
+        required_extensions,
+    );
+    let pool = PoolSv2::new(config);
+    let pool_clone = pool.clone();
+    tokio::spawn(async move {
+        _ = pool_clone.start().await;
+    });
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    (pool, listening_address)
+}
+
 pub fn start_template_provider(
     sv2_interval: Option<u32>,
     difficulty_level: DifficultyLevel,
@@ -187,6 +245,84 @@ pub fn start_jdc(
     let tp_config = TemplateProviderType::Sv2Tp {
         address: tp_address.to_string(),
         public_key: None,
+    };
+    let protocol_config = ProtocolConfig::new(
+        max_supported_version,
+        min_supported_version,
+        coinbase_reward_script,
+    );
+    let shares_per_minute = 10.0;
+    let shares_batch_size = 1;
+    let user_identity = "IT-test".to_string();
+    let jdc_signature = "JDC".to_string();
+    let jd_client_proxy = JobDeclaratorClientConfig::new(
+        jdc_address,
+        protocol_config,
+        user_identity,
+        shares_per_minute,
+        shares_batch_size,
+        pool_config,
+        3600,
+        tp_config,
+        upstreams,
+        jdc_signature,
+        None,
+        supported_extensions,
+        required_extensions,
+    );
+    let ret = jd_client_sv2::JobDeclaratorClient::new(jd_client_proxy);
+    let ret_clone = ret.clone();
+    tokio::spawn(async move { ret_clone.start().await });
+    (ret, jdc_address)
+}
+
+/// Start a JDC (Job Declarator Client) that connects directly to Bitcoin Core via IPC.
+///
+/// This bypasses sv2-tp and uses `TemplateProviderType::BitcoinCoreIpc` for direct
+/// communication with Bitcoin Core's mining interface.
+pub fn start_jdc_ipc(
+    pool: &[(SocketAddr, SocketAddr)], // (pool_address, jds_address)
+    ipc_socket_path: std::path::PathBuf,
+    supported_extensions: Vec<u16>,
+    required_extensions: Vec<u16>,
+) -> (JobDeclaratorClient, SocketAddr) {
+    use jd_client_sv2::config::{JobDeclaratorClientConfig, PoolConfig, ProtocolConfig, Upstream};
+    let jdc_address = get_available_address();
+    let max_supported_version = 2;
+    let min_supported_version = 2;
+    let authority_public_key = Secp256k1PublicKey::try_from(
+        "9auqWEzQDVyd2oe1JVGFLMLHZtCo2FFqZwtKA5gd9xbuEu7PH72".to_string(),
+    )
+    .unwrap();
+    let authority_secret_key = Secp256k1SecretKey::try_from(
+        "mkDLTBBRxdBv998612qipDYoTK3YUrqLe8uWw7gu3iXbSrn2n".to_string(),
+    )
+    .unwrap();
+    let coinbase_reward_script = CoinbaseRewardScript::from_descriptor(
+        "wpkh(036adc3bdf21e6f9a0f0fb0066bf517e5b7909ed1563d6958a10993849a7554075)",
+    )
+    .unwrap();
+    let authority_pubkey = Secp256k1PublicKey::try_from(
+        "9auqWEzQDVyd2oe1JVGFLMLHZtCo2FFqZwtKA5gd9xbuEu7PH72".to_string(),
+    )
+    .unwrap();
+    let upstreams = pool
+        .iter()
+        .map(|(pool_addr, jds_addr)| {
+            Upstream::new(
+                authority_pubkey,
+                pool_addr.ip().to_string(),
+                pool_addr.port(),
+                jds_addr.ip().to_string(),
+                jds_addr.port(),
+            )
+        })
+        .collect();
+    let pool_config = PoolConfig::new(authority_public_key, authority_secret_key);
+    let tp_config = TemplateProviderType::BitcoinCoreIpc {
+        unix_socket_path: ipc_socket_path,
+        fee_threshold: 0,
+        min_interval: 1,
     };
     let protocol_config = ProtocolConfig::new(
         max_supported_version,

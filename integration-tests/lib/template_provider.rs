@@ -51,6 +51,7 @@ pub struct TemplateProvider {
     bitcoind: Node,
     sv2_tp_process: Child,
     sv2_port: u16,
+    ipc_socket_path: PathBuf,
 }
 
 /// Represents the consensus difficulty level of the network.
@@ -244,10 +245,19 @@ impl TemplateProvider {
         // Wait for sv2-tp to start and connect to Bitcoin Core
         std::thread::sleep(std::time::Duration::from_secs(3));
 
+        // Compute the IPC socket path: <datadir>/<network>/node.sock
+        let network_dir = if conf.network == "signet" {
+            "signet"
+        } else {
+            "regtest"
+        };
+        let ipc_socket_path = datadir.join(network_dir).join("node.sock");
+
         TemplateProvider {
             bitcoind,
             sv2_tp_process,
             sv2_port: port,
+            ipc_socket_path,
         }
     }
 
@@ -311,6 +321,14 @@ impl TemplateProvider {
     /// Return the sv2 port that sv2-tp is listening on.
     pub fn sv2_port(&self) -> u16 {
         self.sv2_port
+    }
+
+    /// Return the IPC socket path for direct Bitcoin Core connection.
+    ///
+    /// This path can be used with `TemplateProviderType::BitcoinCoreIpc` to
+    /// connect Pool or JDC directly to Bitcoin Core via IPC, bypassing sv2-tp.
+    pub fn ipc_socket_path(&self) -> &PathBuf {
+        &self.ipc_socket_path
     }
 }
 
