@@ -299,7 +299,7 @@ pub fn start_jdc_ipc(
     )
     .unwrap();
     let coinbase_reward_script = CoinbaseRewardScript::from_descriptor(
-        "wpkh(036adc3bdf21e6f9a0f0fb0066bf517e5b7909ed1563d6958a10993849a7554075)",
+        "wpkh(02a1633cafcc01ebfb6d78e39f687a1f0995c62fc95f51ead10a02ee0be551b5dc)",
     )
     .unwrap();
     let authority_pubkey = Secp256k1PublicKey::try_from(
