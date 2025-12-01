@@ -1,3 +1,6 @@
+// pool_coinbase_output_key = wpkh(036adc3bdf21e6f9a0f0fb0066bf517e5b7909ed1563d6958a10993849a7554075)
+// jdc_coinbase_output_key = wpkh(02a1633cafcc01ebfb6d78e39f687a1f0995c62fc95f51ead10a02ee0be551b5dc)
+
 use crate::{sniffer::*, sv1_minerd::MinerdProcess, template_provider::*};
 use corepc_node::{ConnectParams, CookieValues};
 use interceptor::InterceptAction;
@@ -134,10 +137,6 @@ pub async fn start_pool(
     (pool, listening_address)
 }
 
-/// Start a Pool that connects directly to Bitcoin Core via IPC.
-///
-/// This bypasses sv2-tp and uses `TemplateProviderType::BitcoinCoreIpc` for direct
-/// communication with Bitcoin Core's mining interface.
 pub async fn start_pool_ipc(
     ipc_socket_path: std::path::PathBuf,
     supported_extensions: Vec<u16>,
@@ -276,10 +275,6 @@ pub fn start_jdc(
     (ret, jdc_address)
 }
 
-/// Start a JDC (Job Declarator Client) that connects directly to Bitcoin Core via IPC.
-///
-/// This bypasses sv2-tp and uses `TemplateProviderType::BitcoinCoreIpc` for direct
-/// communication with Bitcoin Core's mining interface.
 pub fn start_jdc_ipc(
     pool: &[(SocketAddr, SocketAddr)], // (pool_address, jds_address)
     ipc_socket_path: std::path::PathBuf,
