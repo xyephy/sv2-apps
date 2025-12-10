@@ -150,15 +150,29 @@ impl JobDeclaratorClient {
             }
             TemplateProviderType::BitcoinCoreIpc {
                 unix_socket_path,
+                network,
+                data_dir,
                 fee_threshold,
                 min_interval,
             } => {
+                let unix_socket_path = stratum_apps::tp_type::resolve_ipc_socket_path(
+                    unix_socket_path,
+                    network.as_ref(),
+                    data_dir,
+                )
+                .expect("Failed to resolve Bitcoin Core IPC socket path");
+
+                info!(
+                    "Using Bitcoin Core IPC socket at: {}",
+                    unix_socket_path.display()
+                );
+
                 // incoming and outgoing TDP channels from the perspective of BitcoinCoreSv2
                 let incoming_tdp_receiver = channel_manager_to_tp_receiver.clone();
                 let outgoing_tdp_sender = tp_to_channel_manager_sender.clone();
 
                 let bitcoin_core_config = BitcoinCoreSv2Config {
-                    unix_socket_path: unix_socket_path.clone(),
+                    unix_socket_path,
                     fee_threshold,
                     min_interval,
                     incoming_tdp_receiver,

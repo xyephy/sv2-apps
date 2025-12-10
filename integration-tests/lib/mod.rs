@@ -58,7 +58,9 @@ pub fn sv2_tp_config(address: SocketAddr) -> TemplateProviderType {
 /// Helper to create BitcoinCoreIpc config with default thresholds.
 pub fn ipc_config(socket_path: std::path::PathBuf) -> TemplateProviderType {
     TemplateProviderType::BitcoinCoreIpc {
-        unix_socket_path: socket_path,
+        unix_socket_path: Some(socket_path),
+        network: None,
+        data_dir: None,
         fee_threshold: 0,
         min_interval: 1,
     }

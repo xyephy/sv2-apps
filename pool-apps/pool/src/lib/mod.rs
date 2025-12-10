@@ -14,7 +14,7 @@ use tracing::{debug, error, info, warn};
 use crate::{
     channel_manager::ChannelManager,
     config::PoolConfig,
-    error::PoolResult,
+    error::{PoolError, PoolResult},
     status::{State, Status},
     template_receiver::{
         bitcoin_core::{connect_to_bitcoin_core, BitcoinCoreSv2Config},
@@ -117,9 +117,23 @@ impl PoolSv2 {
             }
             TemplateProviderType::BitcoinCoreIpc {
                 unix_socket_path,
+                network,
+                data_dir,
                 fee_threshold,
                 min_interval,
             } => {
+                let unix_socket_path = stratum_apps::tp_type::resolve_ipc_socket_path(
+                    unix_socket_path,
+                    network.as_ref(),
+                    data_dir,
+                )
+                .map_err(PoolError::Configuration)?;
+
+                info!(
+                    "Using Bitcoin Core IPC socket at: {}",
+                    unix_socket_path.display()
+                );
+
                 // incoming and outgoing TDP channels from the perspective of BitcoinCoreSv2
                 let incoming_tdp_receiver = channel_manager_to_tp_receiver.clone();
                 let incoming_tdp_sender = channel_manager_to_tp_sender.clone();

@@ -73,7 +73,12 @@ jds_port = 43334
 # jds_port = "34264"
 
 # Bitcoin Core IPC config
+# Auto-detection: set 'network' to auto-detect node.sock location
+# Supported networks: mainnet, testnet4, signet, regtest
+# Default data_dir: ~/.bitcoin (Linux) or ~/Library/Application Support/Bitcoin (macOS)
 [template_provider_type.BitcoinCoreIpc]
-unix_socket_path = "/path/to/node.sock"
+network = "testnet4"
+# data_dir = "/custom/bitcoin/data"  # Optional: override default data directory
+# unix_socket_path = "/path/to/node.sock"  # Optional: explicit path overrides auto-detection
 fee_threshold = 100
 min_interval = 5
