@@ -45,6 +45,28 @@ macro_rules! shutdown_all {
     };
 }
 
+/// Polls `get_block_hash` until it returns a different hash than `current_block_hash`.
+///
+/// Panics if no new block is found within the timeout.
+pub async fn wait_for_new_block(
+    current_block_hash: &str,
+    get_block_hash: impl Fn() -> String,
+    timeout_msg: &str,
+) {
+    let timeout = tokio::time::Duration::from_secs(60);
+    let poll_interval = tokio::time::Duration::from_secs(2);
+    let start_time = tokio::time::Instant::now();
+    loop {
+        tokio::time::sleep(poll_interval).await;
+        if get_block_hash() != current_block_hash {
+            return;
+        }
+        if start_time.elapsed() > timeout {
+            panic!("{}", timeout_msg);
+        }
+    }
+}
+
 const SHARES_PER_MINUTE: f32 = 120.0;
 
 pub const POOL_COINBASE_REWARD_ADDRESS: &str = "tb1qa0sm0hxzj0x25rh8gw5xlzwlsfvvyz8u96w3p8";
@@ -177,9 +199,22 @@ pub fn start_template_provider(
     sv2_interval: Option<u32>,
     difficulty_level: DifficultyLevel,
 ) -> (TemplateProvider, SocketAddr) {
+    start_template_provider_with_args(sv2_interval, difficulty_level, vec![])
+}
+
+pub fn start_template_provider_with_args(
+    sv2_interval: Option<u32>,
+    difficulty_level: DifficultyLevel,
+    extra_bitcoin_args: Vec<&str>,
+) -> (TemplateProvider, SocketAddr) {
     let address = get_available_address();
     let sv2_interval = sv2_interval.unwrap_or(20);
-    let template_provider = TemplateProvider::start(address.port(), sv2_interval, difficulty_level);
+    let template_provider = TemplateProvider::start_with_args(
+        address.port(),
+        sv2_interval,
+        difficulty_level,
+        extra_bitcoin_args,
+    );
     template_provider.generate_blocks(1);
     (template_provider, address)
 }

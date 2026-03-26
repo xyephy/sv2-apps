@@ -10,7 +10,7 @@ use tracing::warn;
 
 use crate::utils::{fs_utils, http, tarball};
 
-const VERSION_SV2_TP: &str = "1.0.3";
+const VERSION_SV2_TP: &str = "1.0.6";
 const VERSION_BITCOIN_CORE: &str = "30.2";
 
 fn get_sv2_tp_filename(os: &str, arch: &str) -> String {
@@ -69,6 +69,19 @@ pub struct BitcoinCore {
 impl BitcoinCore {
     /// Start a new [`BitcoinCore`] instance with IPC enabled.
     pub fn start(port: u16, difficulty_level: DifficultyLevel) -> Self {
+        Self::start_with_args(port, difficulty_level, vec![])
+    }
+
+    /// Start a new [`BitcoinCore`] instance with IPC enabled and extra arguments.
+    ///
+    /// When `extra_args` is non-empty, `BITCOIN_NODE_BIN` must be set to the custom
+    /// bitcoin-node binary path. Standard tests (empty extra_args) always use the
+    /// downloaded binary.
+    pub fn start_with_args(
+        port: u16,
+        difficulty_level: DifficultyLevel,
+        extra_args: Vec<&str>,
+    ) -> Self {
         let current_dir: PathBuf = std::env::current_dir().expect("failed to read current dir");
         let bin_dir = current_dir.join("template-provider");
         if !bin_dir.exists() {
@@ -132,46 +145,61 @@ impl BitcoinCore {
             }
         }
 
-        // Download and setup Bitcoin Core v30.2 with IPC support
-        let os = env::consts::OS;
-        let arch = env::consts::ARCH;
-        let bitcoin_filename = get_bitcoin_core_filename(os, arch);
-        let bitcoin_home = bin_dir.join(format!("bitcoin-{VERSION_BITCOIN_CORE}"));
-        let bitcoin_node_bin = bitcoin_home.join("libexec").join("bitcoin-node");
-        let bitcoin_cli_bin = bitcoin_home.join("bin").join("bitcoin-cli");
+        // Use custom bitcoin-node binary if BITCOIN_NODE_BIN is set,
+        // otherwise download Bitcoin Core v30.2.
+        // Note: BITCOIN_NODE_BIN is only checked when extra_args are provided,
+        // so standard tests always use the downloaded binary.
+        let bitcoin_node_bin = if !extra_args.is_empty() {
+            match env::var("BITCOIN_NODE_BIN") {
+                Ok(custom_bin) => PathBuf::from(custom_bin),
+                Err(_) => panic!(
+                    "BITCOIN_NODE_BIN must be set when extra bitcoin-node args are provided: {:?}",
+                    extra_args
+                ),
+            }
+        } else {
+            let os = env::consts::OS;
+            let arch = env::consts::ARCH;
+            let bitcoin_filename = get_bitcoin_core_filename(os, arch);
+            let bitcoin_home = bin_dir.join(format!("bitcoin-{VERSION_BITCOIN_CORE}"));
+            let bitcoin_node_bin = bitcoin_home.join("libexec").join("bitcoin-node");
+            let bitcoin_cli_bin = bitcoin_home.join("bin").join("bitcoin-cli");
 
-        if !bitcoin_node_bin.exists() {
-            let tarball_bytes = match env::var("BITCOIN_CORE_TARBALL_FILE") {
-                Ok(path) => tarball::read_from_file(&path),
-                Err(_) => {
-                    warn!("Downloading Bitcoin Core {} for the testing session. This could take a while...", VERSION_BITCOIN_CORE);
-                    let download_endpoint = env::var("BITCOIN_CORE_DOWNLOAD_ENDPOINT")
-                        .unwrap_or_else(|_| {
-                            "https://bitcoincore.org/bin/bitcoin-core-30.2".to_owned()
-                        });
-                    let url = format!("{download_endpoint}/{bitcoin_filename}");
-                    http::make_get_request(&url, 5)
+            if !bitcoin_node_bin.exists() {
+                let tarball_bytes = match env::var("BITCOIN_CORE_TARBALL_FILE") {
+                    Ok(path) => tarball::read_from_file(&path),
+                    Err(_) => {
+                        warn!("Downloading Bitcoin Core {} for the testing session. This could take a while...", VERSION_BITCOIN_CORE);
+                        let download_endpoint = env::var("BITCOIN_CORE_DOWNLOAD_ENDPOINT")
+                            .unwrap_or_else(|_| {
+                                "https://bitcoincore.org/bin/bitcoin-core-30.2".to_owned()
+                            });
+                        let url = format!("{download_endpoint}/{bitcoin_filename}");
+                        http::make_get_request(&url, 5)
+                    }
+                };
+
+                if let Some(parent) = bitcoin_home.parent() {
+                    create_dir_all(parent).unwrap();
                 }
-            };
 
-            if let Some(parent) = bitcoin_home.parent() {
-                create_dir_all(parent).unwrap();
+                tarball::unpack(&tarball_bytes, &bin_dir);
+
+                // Sign the binaries on macOS
+                if os == "macos" {
+                    for bin in &[&bitcoin_node_bin, &bitcoin_cli_bin] {
+                        std::process::Command::new("codesign")
+                            .arg("--sign")
+                            .arg("-")
+                            .arg(bin)
+                            .output()
+                            .expect("Failed to sign Bitcoin Core binary");
+                    }
+                }
             }
 
-            tarball::unpack(&tarball_bytes, &bin_dir);
-
-            // Sign the binaries on macOS
-            if os == "macos" {
-                for bin in &[&bitcoin_node_bin, &bitcoin_cli_bin] {
-                    std::process::Command::new("codesign")
-                        .arg("--sign")
-                        .arg("-")
-                        .arg(bin)
-                        .output()
-                        .expect("Failed to sign Bitcoin Core binary");
-                }
-            }
-        }
+            bitcoin_node_bin
+        };
 
         // Add IPC and basic args
         conf.args.extend(vec![
@@ -180,6 +208,7 @@ impl BitcoinCore {
             "-debug=rpc",
             "-logtimemicros=1",
         ]);
+        conf.args.extend(extra_args);
 
         // Launch bitcoin-node using corepc-node (which will manage the process for us)
         let timeout = std::time::Duration::from_secs(10);
@@ -300,7 +329,17 @@ pub struct TemplateProvider {
 impl TemplateProvider {
     /// Start a new [`TemplateProvider`] instance with Bitcoin Core v30.2+ and standalone sv2-tp.
     pub fn start(port: u16, sv2_interval: u32, difficulty_level: DifficultyLevel) -> Self {
-        let bitcoin_core = BitcoinCore::start(port, difficulty_level);
+        Self::start_with_args(port, sv2_interval, difficulty_level, vec![])
+    }
+
+    /// Start with extra arguments passed to bitcoin-node.
+    pub fn start_with_args(
+        port: u16,
+        sv2_interval: u32,
+        difficulty_level: DifficultyLevel,
+        extra_bitcoin_args: Vec<&str>,
+    ) -> Self {
+        let bitcoin_core = BitcoinCore::start_with_args(port, difficulty_level, extra_bitcoin_args);
 
         let current_dir: PathBuf = std::env::current_dir().expect("failed to read current dir");
         let bin_dir = current_dir.join("template-provider");
