@@ -197,6 +197,7 @@ pub fn start_jdc(
     supported_extensions: Vec<u16>,
     required_extensions: Vec<u16>,
     enable_monitoring: bool,
+    jdc_mode: Option<&str>,
 ) -> (JobDeclaratorClient, SocketAddr, Option<SocketAddr>) {
     use jd_client_sv2::config::{JobDeclaratorClientConfig, PoolConfig, ProtocolConfig, Upstream};
     let jdc_address = get_available_address();
@@ -255,7 +256,7 @@ pub fn start_jdc(
         template_provider_config,
         upstreams,
         jdc_signature,
-        None,
+        jdc_mode.map(|s| s.to_string()),
         supported_extensions,
         required_extensions,
         monitoring_address,
@@ -272,6 +273,7 @@ pub async fn start_pool_with_jds(
     supported_extensions: Vec<u16>,
     required_extensions: Vec<u16>,
     enable_monitoring: bool,
+    full_template_mode_required: bool,
 ) -> (PoolSv2, SocketAddr, SocketAddr, Option<SocketAddr>) {
     use pool_sv2::config::{AuthorityConfig, ConnectionConfig, JDSPartialConfig, PoolConfig};
 
@@ -318,7 +320,11 @@ pub async fn start_pool_with_jds(
         required_extensions.clone(),
         monitoring_address,
         monitoring_cache_refresh_secs,
-        Some(JDSPartialConfig::new(jds_address)),
+        Some({
+            let mut jds_partial = JDSPartialConfig::new(jds_address);
+            jds_partial.set_full_template_mode_required(full_template_mode_required);
+            jds_partial
+        }),
     );
 
     let pool = PoolSv2::new(config);

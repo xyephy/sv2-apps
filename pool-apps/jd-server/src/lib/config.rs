@@ -25,6 +25,8 @@ pub struct JDSPartialConfig {
     supported_extensions: Vec<u16>,
     #[serde(default)]
     required_extensions: Vec<u16>,
+    #[serde(default = "default_true")]
+    full_template_mode_required: bool,
 }
 
 /// Complete JDS configuration with all required fields populated.
@@ -40,6 +42,7 @@ pub struct JDSConfig {
     coinbase_reward_script: CoinbaseRewardScript,
     supported_extensions: Vec<u16>,
     required_extensions: Vec<u16>,
+    full_template_mode_required: bool,
 }
 
 impl JDSPartialConfig {
@@ -52,7 +55,12 @@ impl JDSPartialConfig {
             listen_address,
             supported_extensions: Vec::new(),
             required_extensions: Vec::new(),
+            full_template_mode_required: true,
         }
+    }
+
+    pub fn set_full_template_mode_required(&mut self, required: bool) {
+        self.full_template_mode_required = required;
     }
 }
 
@@ -77,6 +85,7 @@ impl JDSConfig {
             coinbase_reward_script,
             supported_extensions,
             required_extensions,
+            full_template_mode_required: true,
         }
     }
 
@@ -100,7 +109,12 @@ impl JDSConfig {
             coinbase_reward_script,
             supported_extensions: partial.supported_extensions,
             required_extensions: partial.required_extensions,
+            full_template_mode_required: partial.full_template_mode_required,
         }
+    }
+
+    pub fn full_template_mode_required(&self) -> bool {
+        self.full_template_mode_required
     }
 
     /// Address the JDS downstream server listens on (Noise-encrypted JDP).
@@ -137,4 +151,8 @@ impl JDSConfig {
     pub fn required_extensions(&self) -> &[u16] {
         &self.required_extensions
     }
+}
+
+fn default_true() -> bool {
+    true
 }

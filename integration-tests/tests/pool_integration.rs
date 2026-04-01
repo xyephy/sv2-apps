@@ -251,7 +251,7 @@ async fn pool_does_not_send_jobs_to_jdc() {
     let (tp, tp_addr) = start_template_provider(sv2_interval, DifficultyLevel::Low);
     tp.fund_wallet().unwrap();
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (pool_jdc_sniffer, pool_jdc_sniffer_addr) =
         start_sniffer("pool_jdc", pool_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
@@ -260,6 +260,7 @@ async fn pool_does_not_send_jobs_to_jdc() {
         vec![],
         vec![],
         false,
+        None,
     );
     // Block NewExtendedMiningJob and SetNewPrevHash messages between JDC and translator proxy
     let (_tproxy_jdc_sniffer, tproxy_jdc_sniffer_addr) = start_sniffer(

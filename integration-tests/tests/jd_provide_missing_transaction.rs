@@ -7,7 +7,7 @@ async fn jds_ask_for_missing_transactions() {
     let (tp_1, _tp_addr_1) = start_template_provider(None, DifficultyLevel::Low);
     let (tp_2, tp_addr_2) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp_1.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp_1.bitcoin_core(), vec![], vec![], false, true).await;
     let (sniffer, sniffer_addr) = start_sniffer("A", jds_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
         &[(pool_addr, sniffer_addr)],
@@ -15,6 +15,7 @@ async fn jds_ask_for_missing_transactions() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;

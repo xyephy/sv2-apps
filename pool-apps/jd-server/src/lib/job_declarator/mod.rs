@@ -160,6 +160,7 @@ impl JobDeclarator {
         cancellation_token: CancellationToken,
         supported_extensions: Vec<u16>,
         required_extensions: Vec<u16>,
+        full_template_mode_required: bool,
     ) -> JDSResult<(), error::JobDeclarator> {
         info!("Starting downstream server at {listening_address}");
         let server = TcpListener::bind(listening_address)
@@ -189,6 +190,7 @@ impl JobDeclarator {
                                 let task_manager_inner = task_manager_clone.clone();
                                 let supported_extensions_inner = supported_extensions.clone();
                                 let required_extensions_inner = required_extensions.clone();
+                                let full_template_mode_required_inner = full_template_mode_required;
 
                                 task_manager_clone.spawn(async move {
                                     let noise_stream = tokio::select! {
@@ -228,6 +230,7 @@ impl JobDeclarator {
                                         to_downstream_receiver,
                                         supported_extensions_inner,
                                         required_extensions_inner,
+                                        full_template_mode_required_inner,
                                         task_manager_inner.clone(),
                                         cancellation_token_inner.clone(),
                                     );

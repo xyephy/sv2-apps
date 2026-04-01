@@ -65,6 +65,8 @@ pub struct Downstream {
     /// Extensions that JDS requires
     #[allow(unused)]
     pub required_extensions: Vec<u16>,
+    /// Whether the JDS requires full template mode from this downstream.
+    pub full_template_mode_required: bool,
     /// Per-downstream cancellation token (child of the global token).
     /// Cancelling this stops IO tasks, the pending jobs janitor, and the downstream loop
     /// without affecting other downstreams or the server.
@@ -82,6 +84,7 @@ impl Downstream {
         from_job_declarator_receiver: Receiver<JobDeclarationMessage>,
         supported_extensions: Vec<u16>,
         required_extensions: Vec<u16>,
+        full_template_mode_required: bool,
         task_manager: Arc<TaskManager>,
         global_cancellation_token: CancellationToken,
     ) -> Self {
@@ -117,6 +120,7 @@ impl Downstream {
             downstream_id,
             supported_extensions,
             required_extensions,
+            full_template_mode_required,
             downstream_cancellation_token,
         }
     }

@@ -6,7 +6,7 @@ async fn jd_non_aggregated_tproxy_integration() {
     start_tracing();
     let (tp, _tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (jdc_pool_sniffer, jdc_pool_sniffer_addr) =
         start_sniffer("0", pool_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
@@ -19,6 +19,7 @@ async fn jd_non_aggregated_tproxy_integration() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (tproxy_jdc_sniffer, tproxy_jdc_sniffer_addr) =
         start_sniffer("1", jdc_addr, false, vec![], None);
@@ -94,7 +95,7 @@ async fn jd_aggregated_tproxy_integration() {
     start_tracing();
     let (tp, _tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (jdc_pool_sniffer, jdc_pool_sniffer_addr) =
         start_sniffer("0", pool_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
@@ -107,6 +108,7 @@ async fn jd_aggregated_tproxy_integration() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (tproxy_jdc_sniffer, tproxy_jdc_sniffer_addr) =
         start_sniffer("1", jdc_addr, false, vec![], None);

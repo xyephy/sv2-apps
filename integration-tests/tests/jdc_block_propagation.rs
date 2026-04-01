@@ -12,7 +12,7 @@ async fn propagated_from_jdc_to_tp() {
     let (tp, tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let current_block_hash = tp.get_best_block_hash().unwrap();
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let ignore_push_solution =
         IgnoreMessage::new(MessageDirection::ToUpstream, MESSAGE_TYPE_PUSH_SOLUTION);
     let (jdc_jds_sniffer, jdc_jds_sniffer_addr) = start_sniffer(
@@ -29,6 +29,7 @@ async fn propagated_from_jdc_to_tp() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;

@@ -97,6 +97,35 @@ impl HandleCommonMessagesFromClientAsync for Downstream {
             ));
         }
 
+        if self.full_template_mode_required {
+            let has_full_template_mode = msg.flags & 0b0000_0000_0000_0000_0000_0000_0000_0001 != 0;
+            if !has_full_template_mode {
+                info!(
+                    "Rejecting connection from {downstream_id}: JDS requires full template mode."
+                );
+                let response = SetupConnectionError {
+                    flags: 0,
+                    error_code: "requires-full-template-mode"
+                        .to_string()
+                        .try_into()
+                        .expect("error code must be valid string"),
+                };
+                let frame: Sv2Frame = AnyMessage::Common(response.into_static().into())
+                    .try_into()
+                    .map_err(JDSError::shutdown)?;
+                self.downstream_io
+                    .to_downstream_sender
+                    .send(frame)
+                    .await
+                    .map_err(|e| JDSError::disconnect(e, self.downstream_id))?;
+
+                return Err(JDSError::disconnect(
+                    JDSErrorKind::UnsupportedConnectionFlags,
+                    downstream_id,
+                ));
+            }
+        }
+
         let response = SetupConnectionSuccess {
             used_version: 2,
             flags: 0,

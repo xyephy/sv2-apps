@@ -51,7 +51,7 @@ async fn jdc_propagates_block_with_bitcoin_core_ipc() {
     let (tp, _tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let current_block_hash = tp.get_best_block_hash().unwrap();
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let ignore_push_solution =
         IgnoreMessage::new(MessageDirection::ToUpstream, MESSAGE_TYPE_PUSH_SOLUTION);
     let (sniffer, sniffer_addr) = start_sniffer(
@@ -71,6 +71,7 @@ async fn jdc_propagates_block_with_bitcoin_core_ipc() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;

@@ -6,7 +6,7 @@ async fn jdc_submit_shares_success() {
     start_tracing();
     let (tp, tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (sniffer, sniffer_addr) = start_sniffer("0", pool_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
         &[(sniffer_addr, jds_addr)],
@@ -14,6 +14,7 @@ async fn jdc_submit_shares_success() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;

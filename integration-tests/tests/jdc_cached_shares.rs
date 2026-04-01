@@ -27,7 +27,7 @@ async fn jdc_cached_shares_relayed_on_set_custom_job_success() {
     // causing `SetCustomMiningJob.Success` to fail.
     let (tp, tp_addr) = start_template_provider(None, DifficultyLevel::High);
     let (_pool, _pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
 
     let mock_pool_addr = get_available_address();
     let mock_pool = MockUpstream::new(
@@ -45,6 +45,7 @@ async fn jdc_cached_shares_relayed_on_set_custom_job_success() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;

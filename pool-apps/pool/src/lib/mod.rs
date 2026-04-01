@@ -139,6 +139,7 @@ impl PoolSv2 {
                     cancellation_token.clone(),
                     jds_config.supported_extensions().to_vec(),
                     jds_config.required_extensions().to_vec(),
+                    jds_config.full_template_mode_required(),
                 )
                 .await
                 .map_err(|e| PoolErrorKind::Jds(e.into()))?;

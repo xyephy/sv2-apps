@@ -23,7 +23,7 @@ async fn jds_should_not_panic_if_jdc_shutsdown() {
     start_tracing();
     let (tp, tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (sniffer_a, sniffer_addr_a) = start_sniffer("0", jds_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
         &[(pool_addr, sniffer_addr_a)],
@@ -31,6 +31,7 @@ async fn jds_should_not_panic_if_jdc_shutsdown() {
         vec![],
         vec![],
         false,
+        None,
     );
     sniffer_a
         .wait_for_message_type(MessageDirection::ToUpstream, MESSAGE_TYPE_SETUP_CONNECTION)
@@ -50,6 +51,7 @@ async fn jds_should_not_panic_if_jdc_shutsdown() {
         vec![],
         vec![],
         false,
+        None,
     );
     sniffer
         .wait_for_message_type(MessageDirection::ToUpstream, MESSAGE_TYPE_SETUP_CONNECTION)
@@ -66,7 +68,7 @@ async fn jdc_tp_success_setup() {
     start_tracing();
     let (tp, tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (tp_jdc_sniffer, tp_jdc_sniffer_addr) = start_sniffer("0", tp_addr, false, vec![], None);
     let (jdc, jdc_addr, _) = start_jdc(
         &[(pool_addr, jds_addr)],
@@ -74,6 +76,7 @@ async fn jdc_tp_success_setup() {
         vec![],
         vec![],
         false,
+        None,
     );
     // This is needed because jd-client waits for a downstream connection before it starts
     // exchanging messages with the Template Provider.
@@ -97,7 +100,7 @@ async fn jds_reject_setup_connection_with_non_job_declaration_protocol() {
     start_tracing();
     let (tp, _tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, _pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (sniffer, sniffer_addr) = start_sniffer("mock-jds", jds_addr, false, vec![], None);
     let _mock_downstream = MockDownstream::new(
         sniffer_addr,
@@ -138,7 +141,7 @@ async fn jds_reject_setup_connection_without_declare_tx_data_flag() {
     start_tracing();
     let (tp, _tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, _pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (sniffer, sniffer_addr) = start_sniffer("mock-jds", jds_addr, false, vec![], None);
     let _mock_downstream = MockDownstream::new(
         sniffer_addr,
@@ -179,7 +182,7 @@ async fn jds_reject_declare_mining_job_with_invalid_mining_job_token() {
     start_tracing();
     let (tp, _tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, _pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
     let (sniffer, sniffer_addr) = start_sniffer("mock-jds", jds_addr, false, vec![], None);
     let send_to_jds = MockDownstream::new(
         sniffer_addr,
@@ -303,7 +306,7 @@ async fn pool_rejects_reused_set_custom_mining_job_token() {
     start_tracing();
     let (tp, tp_addr) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
 
     // First, run the regular JDC flow and capture one valid SetCustomMiningJob.
     let (jdc_pool_sniffer, jdc_pool_sniffer_addr) =
@@ -314,6 +317,7 @@ async fn pool_rejects_reused_set_custom_mining_job_token() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;
@@ -409,7 +413,7 @@ async fn jds_receive_solution_while_processing_declared_job_test() {
     let (tp_1, _tp_addr_1) = start_template_provider(None, DifficultyLevel::Low);
     let (tp_2, tp_addr_2) = start_template_provider(None, DifficultyLevel::Low);
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp_1.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp_1.bitcoin_core(), vec![], vec![], false, true).await;
 
     let prev_hash = U256::Owned(vec![
         184, 103, 138, 88, 153, 105, 236, 29, 123, 246, 107, 203, 1, 33, 10, 122, 188, 139, 218,
@@ -447,6 +451,7 @@ async fn jds_receive_solution_while_processing_declared_job_test() {
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr], false, vec![], vec![], None, false).await;
@@ -509,7 +514,7 @@ async fn jds_wont_exit_upon_receiving_unexpected_txids_in_provide_missing_transa
     assert!(tp_2.create_mempool_transaction().is_ok());
 
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp_1.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp_1.bitcoin_core(), vec![], vec![], false, true).await;
 
     let provide_missing_transaction_success_replace = ReplaceMessage::new(
         MessageDirection::ToUpstream,
@@ -540,6 +545,7 @@ async fn jds_wont_exit_upon_receiving_unexpected_txids_in_provide_missing_transa
         vec![],
         vec![],
         false,
+        None,
     );
     let (translator, tproxy_addr, _) =
         start_sv2_translator(&[jdc_addr_1], false, vec![], vec![], None, false).await;
@@ -598,7 +604,7 @@ async fn jdc_group_extended_channels() {
     let (tp, tp_addr) = start_template_provider(sv2_interval, DifficultyLevel::Low);
     tp.fund_wallet().unwrap();
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
 
     let (jdc, jdc_addr, _) = start_jdc(
         &[(pool_addr, jds_addr)],
@@ -606,6 +612,7 @@ async fn jdc_group_extended_channels() {
         vec![],
         vec![],
         false,
+        None,
     );
 
     let (sniffer, sniffer_addr) = start_sniffer("sniffer", jdc_addr, false, vec![], None);
@@ -782,7 +789,7 @@ async fn jdc_group_standard_channels() {
     let (tp, tp_addr) = start_template_provider(sv2_interval, DifficultyLevel::Low);
     tp.fund_wallet().unwrap();
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], false, true).await;
 
     let (jdc, jdc_addr, _) = start_jdc(
         &[(pool_addr, jds_addr)],
@@ -790,6 +797,7 @@ async fn jdc_group_standard_channels() {
         vec![],
         vec![],
         false,
+        None,
     );
 
     let (sniffer, sniffer_addr) = start_sniffer("sniffer", jdc_addr, false, vec![], None);
@@ -975,7 +983,7 @@ async fn jdc_require_standard_jobs_set_does_not_group_standard_channels() {
     let (tp, tp_addr) = start_template_provider(sv2_interval, DifficultyLevel::Low);
     tp.fund_wallet().unwrap();
     let (pool, pool_addr, jds_addr, _) =
-        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], true).await;
+        start_pool_with_jds(tp.bitcoin_core(), vec![], vec![], true, true).await;
 
     let (jdc, jdc_addr, _) = start_jdc(
         &[(pool_addr, jds_addr)],
@@ -983,6 +991,7 @@ async fn jdc_require_standard_jobs_set_does_not_group_standard_channels() {
         vec![],
         vec![],
         false,
+        None,
     );
 
     let (sniffer, sniffer_addr) = start_sniffer("sniffer", jdc_addr, false, vec![], None);
